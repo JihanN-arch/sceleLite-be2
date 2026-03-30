@@ -6,8 +6,6 @@ import mainRouter from './routes/main.js';
 dotenv.config();
 
 const app = express();
-console.log(config.jwsSecret);
-console.log(config.accessTokenSecret);
 
 // middleware
 app.use(express.json());

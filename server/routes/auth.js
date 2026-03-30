@@ -23,22 +23,28 @@ router.post('/login', async (req, res) => {
 
   if (!isMatch) {
     return res.status(403).json({ message: 'Invalid credentials!' });
-  }
+  } // generate JWT
 
-  // generate JWT
   const accessToken = jwt.sign(
-    { username: user.username, role: user.role },
+    {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+    },
     process.env.ACCESS_TOKEN_SECRET,
     { expiresIn: '15m' },
   );
 
   const refreshToken = jwt.sign(
-    { username: user.username },
+    {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+    },
     process.env.REFRESH_TOKEN_SECRET,
     { expiresIn: '7d' },
-  );
+  ); // simpan ke DB
 
-  // simpan ke DB
   await db.execute('UPDATE users SET refresh_token=? WHERE username=?', [
     refreshToken,
     user.username,
@@ -50,9 +56,7 @@ router.post('/login', async (req, res) => {
 router.post('/refresh-token', async (req, res) => {
   const { refreshToken } = req.body;
 
-  if (!refreshToken) {
-    return res.sendStatus(401);
-  }
+  if (!refreshToken) return res.sendStatus(401);
 
   const [rows] = await db.execute('SELECT * FROM users WHERE refresh_token=?', [
     refreshToken,
@@ -60,11 +64,15 @@ router.post('/refresh-token', async (req, res) => {
 
   if (rows.length === 0) return res.sendStatus(403);
 
-  jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, user) => {
+  jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, decoded) => {
     if (err) return res.sendStatus(403);
 
     const newAccessToken = jwt.sign(
-      { username: user.username },
+      {
+        id: decoded.id,
+        username: decoded.username,
+        role: decoded.role,
+      },
       process.env.ACCESS_TOKEN_SECRET,
       { expiresIn: '15m' },
     );

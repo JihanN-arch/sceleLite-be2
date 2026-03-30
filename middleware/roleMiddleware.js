@@ -1,7 +1,10 @@
-export const authorizeRole = (role) => {
+export const authorizeRole = (...allowedRoles) => {
   return (req, res, next) => {
-    if (req.user.role !== role) {
-      return res.status(403).json({ message: 'Forbidden' });
+    // req.user didapat dari authenticateToken
+    if (!req.user || !allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({
+        message: `Akses ditolak! Role ${req.user?.role || 'Guest'} tidak diizinkan.`,
+      });
     }
     next();
   };
