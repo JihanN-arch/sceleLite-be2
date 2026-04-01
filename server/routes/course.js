@@ -10,7 +10,23 @@ const router = express.Router();
 // GET (mhswa dn dosn)
 router.get('/courses', authenticateToken, async (req, res) => {
   try {
-    const [rows] = await db.execute('SELECT * FROM courses');
+    const query = `
+      SELECT 
+        c.id, 
+        c.name, 
+        c.code, 
+        c.sks, 
+        c.capacity,
+        u.username AS nama_pengajar,
+        COUNT(e.id) AS terisi,
+        (c.capacity - COUNT(e.id)) AS sisa_kuota
+      FROM courses c
+      JOIN users u ON c.dosen_id = u.id
+      LEFT JOIN enrollments e ON c.id = e.course_id
+      GROUP BY c.id, u.username
+    `;
+
+    const [rows] = await db.execute(query);
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -37,24 +53,6 @@ router.post(
       );
 
       res.status(201).json({ message: 'Course created!' });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  },
-);
-
-// buat dashbord lihat matkul
-router.get(
-  '/courses/my',
-  authenticateToken,
-  authorizeRole('dosen'),
-  async (req, res) => {
-    try {
-      const [rows] = await db.execute(
-        'SELECT * FROM courses WHERE dosen_id = ?',
-        [req.user.id],
-      );
-      res.json(rows);
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -137,28 +135,101 @@ router.delete(
   },
 );
 
-// dashbord dosen
+// dashbord dosen dan mahasiwa
+router.get('/myDashboard', authenticateToken, async (req, res) => {
+  try {
+    const { id, role } = req.user;
+
+    if (role === 'dosen') {
+      // matkul yg dia buat
+      const queryDosen = `
+          SELECT 
+            c.id, 
+            c.name, 
+            c.code, 
+            c.sks, 
+            c.capacity,
+            COUNT(e.id) AS total_pendaftar
+          FROM courses c
+          LEFT JOIN enrollments e ON c.id = e.course_id
+          WHERE c.dosen_id = ?
+          GROUP BY c.id`;
+
+      const [rows] = await db.execute(queryDosen, [id]);
+      return res.json({
+        message: 'Dashboard Dosen: Mata kuliah yang Anda ampu',
+        role: role,
+        data: rows,
+      });
+    } else if (role === 'mahasiswa') {
+      // lihat matkul y diambil
+      const queryMahasiswa = `
+          SELECT 
+            c.id, 
+            c.name, 
+            c.code, 
+            c.sks, 
+            u.username AS nama_dosen
+          FROM enrollments e
+          JOIN courses c ON e.course_id = c.id
+          JOIN users u ON c.dosen_id = u.id
+          WHERE e.user_id = ?`;
+
+      const [rows] = await db.execute(queryMahasiswa, [id]);
+      return res.json({
+        message: 'Dashboard Mahasiswa: Mata kuliah yang Anda ambil',
+        role: role,
+        data: rows,
+      });
+    }
+
+    return res.status(403).json({ message: 'Role tidak valid' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+//Lihat mahasiswa yg terdaftar di matkul
 router.get(
-  '/dashboard',
+  '/courses/:id/students',
   authenticateToken,
   authorizeRole('dosen'),
   async (req, res) => {
     try {
-      const query = `
-SELECT 
-  c.id, 
-  c.name, 
-  c.code, 
-  c.sks, 
-  c.capacity,
-  COUNT(e.id) AS total_pendaftar
-FROM courses c
-LEFT JOIN enrollments e ON c.id = e.course_id
-WHERE c.dosen_id = ?
-GROUP BY c.id`;
+      const { id } = req.params;
+      const loggedInDosenId = req.user.id;
 
-      const [rows] = await db.execute(query, [req.user.id]);
-      res.json(rows);
+      const [courseCheck] = await db.execute(
+        'SELECT id FROM courses WHERE id = ? AND dosen_id = ?',
+        [id, loggedInDosenId],
+      );
+
+      if (courseCheck.length === 0) {
+        return res.status(403).json({
+          message:
+            'Anda tidak memiliki akses ke data mata kuliah ini atau matkul tidak ditemukan',
+        });
+      }
+
+      const query = `
+      SELECT 
+        u.id AS student_id, 
+        u.username, 
+        m.current_sks,
+        e.enrolled_at -- Asumsi kamu punya kolom created_at di tabel enrollments
+      FROM enrollments e
+      JOIN users u ON e.user_id = u.id
+      JOIN mahasiswa_profile m ON u.id = m.user_id
+      WHERE e.course_id = ?
+    `;
+
+      const [students] = await db.execute(query, [id]);
+
+      res.json({
+        course_id: id,
+        total_students: students.length,
+        students: students,
+      });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
