@@ -8,6 +8,7 @@ const router = express.Router();
 //!! DONE
 
 // GET (mhswa dn dosn)
+// ini untuk mainDashboard
 router.get('/courses', authenticateToken, async (req, res) => {
   try {
     const query = `
@@ -136,6 +137,7 @@ router.delete(
 );
 
 // dashbord dosen dan mahasiwa
+// my dahsboard
 router.get('/myDashboard', authenticateToken, async (req, res) => {
   try {
     const { id, role } = req.user;
@@ -216,7 +218,6 @@ router.get(
         u.id AS student_id, 
         u.username, 
         m.current_sks,
-        e.enrolled_at -- Asumsi kamu punya kolom created_at di tabel enrollments
       FROM enrollments e
       JOIN users u ON e.user_id = u.id
       JOIN mahasiswa_profile m ON u.id = m.user_id
@@ -237,3 +238,6 @@ router.get(
 );
 
 export default router;
+
+// kita buat untuk detail page isinya detail matkul dan jumlah pendaftar, itu kalo dia klik dari myDashboard (untuk dosen) jdi tmabahan getCourse dgn
+// note jdi kita bakal buat dashboard dmn kalo dia klik dia bkn muncul detail peserta aja, utnuk kek detail

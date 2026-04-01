@@ -114,7 +114,11 @@ router.post('/login', async (req, res) => {
     user.username,
   ]);
 
-  res.json({ accessToken, refreshToken });
+  res.json({
+    accessToken,
+    refreshToken,
+    user: { id: user.id, username: user.username, role: user.role },
+  });
 });
 
 router.post('/refresh-token', async (req, res) => {
