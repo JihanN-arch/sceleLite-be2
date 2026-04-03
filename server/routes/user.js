@@ -6,6 +6,7 @@ const router = express.Router();
 //!! DONE
 
 router.get('/users', authenticateToken, async (req, res) => {
+  // sumpah buat get ini aku lupa buat apa ya, keknya salah baca tugas aku dan bru ngeh sekrg lmao
   try {
     const { role } = req.user;
 

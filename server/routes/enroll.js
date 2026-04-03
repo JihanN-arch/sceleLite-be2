@@ -95,7 +95,7 @@ router.delete('/enroll/:course_id', authenticateToken, async (req, res) => {
 
     const [result] = await connection.execute(
       'DELETE FROM enrollments WHERE user_id = ? AND course_id = ?',
-      [userId, course_id],
+      [Number(userId), Number(course_id)],
     );
 
     if (result.affectedRows > 0) {
