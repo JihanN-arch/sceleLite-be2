@@ -105,54 +105,6 @@ router.put(
     }
   },
 );
-router.put(
-  '/courses/:id',
-  authenticateToken,
-  authorizeRole('dosen'),
-  async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { name, code, sks, capacity } = req.body;
-      const loggedInDosenId = req.user.id;
-
-      const [rows] = await db.execute(
-        'SELECT * FROM courses WHERE id = ? AND dosen_id = ?',
-        [id, loggedInDosenId],
-      );
-
-      if (rows.length === 0) {
-        return res
-          .status(403)
-          .json({ message: 'Anda tidak berhak mengedit matkul ini' });
-      }
-
-      const course = rows[0];
-
-      const updatedName = name ?? course.name;
-      const updatedCode = code ?? course.code;
-      const updatedSks = sks !== undefined ? Number(sks) : course.sks;
-      const updatedCapacity =
-        capacity !== undefined ? Number(capacity) : course.capacity;
-
-      await db.execute(
-        'UPDATE courses SET name=?, code=?, sks=?, capacity=? WHERE id=? AND dosen_id=?',
-        [
-          updatedName,
-          updatedCode,
-          updatedSks,
-          updatedCapacity,
-          id,
-          loggedInDosenId,
-        ],
-      );
-
-      res.json({ message: 'Course updated successfully!' });
-    } catch (err) {
-      console.error('SQL Error:', err.message);
-      res.status(500).json({ error: err.message });
-    }
-  },
-);
 
 // delate
 router.delete(
